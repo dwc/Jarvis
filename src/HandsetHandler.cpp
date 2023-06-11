@@ -1,11 +1,13 @@
 #include "HandsetHandler.h"
 // #include "TelnetLogger.h"
 
+static const char* TAG = "HandsetHandler";
+
 HandsetHandler::HandsetHandler()
     : SerialDevice(SourceType::Handset),
     mAlwaysOnTimer(1000),
     mDisplayValueTimer(100),
-    mMode(HandsetMode::ShowValue), 
+    mMode(HandsetMode::Factory), 
     mLastReportedHeight(0)
 {
 }

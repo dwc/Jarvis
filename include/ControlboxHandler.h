@@ -6,7 +6,7 @@
 
 #include <SoftwareSerial.h>
 
-#define RECEIVE_PIN 14
+#define RECEIVE_PIN 5
 #define TRANSMIT_PIN 4
 
 class ControlboxHandler : public SerialDevice

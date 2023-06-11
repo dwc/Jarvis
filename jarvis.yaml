@@ -1,46 +1,36 @@
 substitutions:
-  # main prefix for all entities
-  name: "Desk"
-  # name of your node
-  node_name: "jarvis-desk"
+  # Main prefix for all entities
+  name: "Fully Jarvis"
+  # Name of your node
+  node_name: "fully-jarvis"
 
 esphome:
   name: $node_name
+  friendly_name: $name
   platform: ESP8266
   board: d1_mini
   includes:
-    - jarvis/include/JarvisDesk.h
-    - jarvis/src/JarvisDesk.cpp
-    - jarvis/include/HandsetHandler.h
-    - jarvis/src/HandsetHandler.cpp
-    - jarvis/include/ControlboxHandler.h
-    - jarvis/src/ControlboxHandler.cpp
-    - jarvis/include/SerialDevice.h
-    - jarvis/src/SerialDevice.cpp
-    - jarvis/include/SerialMessage.h
-    - jarvis/src/SerialMessage.cpp
-    - jarvis/include/utils.h
-    - jarvis/src/utils.cpp
-    - jarvis/include/Timer.h
-    - jarvis/src/Timer.cpp
+    - include/JarvisDesk.h
+    - src/JarvisDesk.cpp
+    - include/HandsetHandler.h
+    - src/HandsetHandler.cpp
+    - include/ControlboxHandler.h
+    - src/ControlboxHandler.cpp
+    - include/SerialDevice.h
+    - src/SerialDevice.cpp
+    - include/SerialMessage.h
+    - src/SerialMessage.cpp
+    - include/utils.h
+    - src/utils.cpp
+    - include/Timer.h
+    - src/Timer.cpp
   libraries:
     - espsoftwareserial
-    
   
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Jarvis Fallback Hotspot"
-    password: "xxxxxx"
-
-web_server:
-  port: 80
-  version: 2
-
-captive_portal:
+  fast_connect: true
 
 # Enable logging
 logger:
@@ -48,8 +38,11 @@ logger:
 
 # Enable Home Assistant API
 api:
+  encryption:
+    key: !secret api_encryption_key
 
 ota:
+  password: !secret ota_update_password
 
 custom_component:
   lambda: |-
@@ -70,81 +63,73 @@ custom_component:
     my_custom->sSensitivity = id(sensitivity_select);
     return {my_custom};
   components:
-    - id: desk
+    - id: fully_jarvis_desk
 
 binary_sensor:
   - platform: status
-    name: "Desk Status"
+    name: "Status"
 
 sensor:
   - platform: template
-    name: "$name Preset 1 Position"
+    name: "Preset 1 Position"
     id: preset_1_sensor
   - platform: template
-    name: "$name Preset 2 Position"
+    name: "Preset 2 Position"
     id: preset_2_sensor
   - platform: template
-    name: "$name Preset 3 Position"
+    name: "Preset 3 Position"
     id: preset_3_sensor
   - platform: template
-    name: "$name Preset 4 Position"
+    name: "Preset 4 Position"
     id: preset_4_sensor
   - platform: template
-    name: "$name User limit min"
+    name: "User Limit (minimum)"
     id: user_limit_min
   - platform: template
-    name: "$name User limit max"
+    name: "User Limit (maximum)"
     id: user_limit_max
   - platform: template
-    name: "$name System limit min"
+    name: "System Limit (minimum)"
     id: sys_limit_min
   - platform: template
-    name: "$name System limit max"
+    name: "System Limit (maximum)"
     id: sys_limit_max
-  - platform: dht
-    model: DHT11
-    pin: D3
-    temperature:
-      name: "Room Temperature"
-    humidity:
-      name: "Room Humidity"
-    update_interval: 60s
 
 text_sensor:
   - platform: template
-    name: "$name User limit set"
+    name: "User Limit"
     id: user_limit_set
   
 select:
   - platform: template
-    name: "$name Units"
+    name: "Units"
     id: units_select
     options:
       - inch
       - cm
     optimistic: false
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setUnits(x.c_str());
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setUnits(x.c_str());
   - platform: template
-    name: "$name Touch Mode"
+    name: "Touch Mode"
     id: touch_mode_select
     options:
       - Continuous
       - Single
     optimistic: false
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setTouchMode(x.c_str());
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setTouchMode(x.c_str());
   - platform: template
-    name: "$name Kill Mode"
+    name: "Kill Mode"
     id: kill_mode_select
     options:
       - Kill
       - LetLive
     optimistic: false
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setKillMode(x.c_str());
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setKillMode(x.c_str());
   - platform: template
-    name: "$name Sensitivity"
+    name: "Sensitivity"
     id: sensitivity_select
     options:
       - High
@@ -152,106 +137,106 @@ select:
       - Low
     optimistic: false
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setSensitivity(x.c_str());
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setSensitivity(x.c_str());
 
 number:
   - platform: template
-    name: "$name Height"
+    name: "Height"
     id: height_number
     optimistic: false
     min_value: 1
     max_value: 1800
     step: 10
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).move(x);
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).move(x*10);
   - platform: template
-    name: "$name Offset"
+    name: "Offset"
     id: offset_number
     optimistic: true
     min_value: 1
     max_value: 1800
     step: 1
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setOffset(x);
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setOffset(x);
   - platform: template
-    name: "$name Display number"
+    name: "Display Number"
     id: display_number
     optimistic: true
     min_value: 1
     max_value: 1800
     step: 1
     set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setDisplayNumber(x*10);
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setDisplayNumber(x);
 
 button:
   - platform: template
-    name: "$name Go to preset 1"
+    name: "Go to Preset 1"
     id: go_preset_1
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).goPreset1();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset1();
   - platform: template
-    name: "$name Go to preset 2"
+    name: "Go to Preset 2"
     id: go_preset_2
     on_press:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).goPreset2();
+      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset2();
   - platform: template
-    name: "$name Go to preset 3"
+    name: "Go to Preset 3"
     id: go_preset_3
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).goPreset3();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset3();
   - platform: template
-    name: "$name Go to preset 4"
+    name: "Go to Preset 4"
     id: go_preset_4
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).goPreset4();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset4();
   - platform: template
-    name: "$name Set preset 1"
+    name: "Set Preset 1"
     id: set_preset_1
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setPreset1();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset1();
   - platform: template
-    name: "$name Set preset 2"
+    name: "Set Preset 2"
     id: set_preset_2
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setPreset2();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset2();
   - platform: template
-    name: "$name Set preset 3"
+    name: "Set Preset 3"
     id: set_preset_3
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setPreset3();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset3();
   - platform: template
-    name: "$name Set preset 4"
+    name: "Set Preset 4"
     id: set_preset_4
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setPreset4();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset4();
   - platform: template
-    name: "$name Set max height"
+    name: "Set Maximum Height"
     id: set_max_height
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setMaxHeight();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setMaxHeight();
   - platform: template
-    name: "$name Set min height"
+    name: "Set Minimum Height"
     id: set_min_height
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).setMinHeight();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setMinHeight();
   - platform: template
-    name: "$name Set max height"
+    name: "Clear Maximum Height"
     id: clear_max_height
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).clearMaxHeight();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).clearMaxHeight();
   - platform: template
-    name: "$name Set min height"
+    name: "Clear Minimum Height"
     id: clear_min_height
     on_press:
       then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(desk))).clearMinHeight();
+        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).clearMinHeight();
