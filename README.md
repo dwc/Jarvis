@@ -57,11 +57,40 @@ Important findings:
 
 ## Installation
 
-#### Requirements:
+### Requirements
 
-* [Home Assistant](https://www.home-assistant.io/)
-* Wemos D1 Mini. Or whatever ESP8266 board you find at home.
-* A bit of soldering.
+* [Home Assistant](https://www.home-assistant.io/) or [ESPHome](https://esphome.io/)
+* Wemos D1 Mini (or another ESP8266 board)
+* A bit of soldering
 
-In progress...
+### Notes
 
+I followed a few related guides to get this all working:
+
+* [Mahko_Mahko's Home Assistant forum post about Desky (and other Jiecang controller-based) desks](https://community.home-assistant.io/t/desky-standing-desk-esphome-works-with-desky-uplift-jiecang-assmann-others/383790/18)
+   * This includes a good overview of the hardware I ended up with to wire everything together, along with a 3D printed enclosure. It also has some good information on the RJ45 passthrough and signal cables.
+* [phord's Fully Jarvis IoT interface project](https://github.com/phord/Jarvis)
+   * This includes a [more detailed breakdown of the pinouts](https://github.com/phord/Jarvis#physical-interface-rj-45) which helped me confirm my wiring setup through the RJ45 female breakout box.
+* [maraid's Jarvis ESPHome component](https://github.com/maraid/Jarvis)
+   * This is where this repository forks from. It worked with a few minor changes.
+
+I ended up with the following pin arrangement:
+
+* RJ45 pin 2 (yellow wire) → D1 Mini GPIO5 (RX)
+* RJ45 pin 3 (black wire) → D1 Mini GND
+* RJ45 pin 4 (green wire) → D1 Mini GPIO4 (TX)
+* RJ45 pin 5 (red wire) → D1 Mini 5V
+
+You can see photos of the wiring setup and the setup in its enclosure in the `images` directory.
+
+To configure my device, I made some minor changes to the existing `jarvis.yaml` ESPHome configuration file which you can see in this repository's commit history. Mostly this involved renaming or relabeling to my preferences. I also created a `secrets.yaml` file to contain my WiFi details, Home Assistant API encryption key, and over-the-air update password.
+
+To compile and run on my D1 Mini, I used [Homebrew](https://brew.sh/) to install the [ESPHome CLI](https://formulae.brew.sh/formula/esphome#default):
+
+```
+esphome run jarvis.yaml
+```
+
+For the initial firmware programming on a new D1 Mini, I connected it via USB and select the USB serial device for programming. After that I reprogrammed when necessary over the air.
+
+Finally, I added the device in Home Assistant by waiting a few minutes for Home Assistant to discover it, adding it via Integrations, and specifying my API encryption key when prompted.
