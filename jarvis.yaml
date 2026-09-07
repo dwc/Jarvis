@@ -7,32 +7,22 @@ substitutions:
 esphome:
   name: $node_name
   friendly_name: $name
-  platform: ESP8266
+
+esp8266:
   board: d1_mini
-  includes:
-    - include/JarvisDesk.h
-    - src/JarvisDesk.cpp
-    - include/HandsetHandler.h
-    - src/HandsetHandler.cpp
-    - include/ControlboxHandler.h
-    - src/ControlboxHandler.cpp
-    - include/SerialDevice.h
-    - src/SerialDevice.cpp
-    - include/SerialMessage.h
-    - src/SerialMessage.cpp
-    - include/utils.h
-    - src/utils.cpp
-    - include/Timer.h
-    - src/Timer.cpp
-  libraries:
-    - espsoftwareserial
-  
+
+external_components:
+  - source:
+      type: local
+      path: components
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   fast_connect: true
 
-# Enable logging
+# Enable logging. The handset shares the hardware UART, so the logger must not
+# use it.
 logger:
   baud_rate: 0
 
@@ -45,199 +35,92 @@ ota:
   platform: esphome
   password: !secret ota_update_password
 
-custom_component:
-  lambda: |-
-    auto my_custom = new JarvisDesk();
-    my_custom->sHeight = id(height_number);
-    my_custom->sPreset1 = id(preset_1_sensor);
-    my_custom->sPreset2 = id(preset_2_sensor);
-    my_custom->sPreset3 = id(preset_3_sensor);
-    my_custom->sPreset4 = id(preset_4_sensor);
-    my_custom->sSysLimitMin = id(sys_limit_min);
-    my_custom->sSysLimitMax = id(sys_limit_max);
-    my_custom->sUserLimitMin = id(user_limit_min);
-    my_custom->sUserLimitMax = id(user_limit_max);
-    my_custom->sUserLimitSet = id(user_limit_set);
-    my_custom->sUnits = id(units_select);
-    my_custom->sTouchMode = id(touch_mode_select);
-    my_custom->sKillMode = id(kill_mode_select);
-    my_custom->sSensitivity = id(sensitivity_select);
-    return {my_custom};
-  components:
-    - id: fully_jarvis_desk
+uart:
+  # Hardware UART0 to the handset.
+  - id: handset_uart
+    tx_pin: GPIO1
+    rx_pin: GPIO3
+    baud_rate: 9600
+  # Software UART to the control box.
+  - id: controlbox_uart
+    tx_pin: GPIO4
+    rx_pin: GPIO5
+    baud_rate: 9600
+
+jarvis_desk:
+  id: desk
+  handset_uart_id: handset_uart
+  controlbox_uart_id: controlbox_uart
 
 binary_sensor:
   - platform: status
     name: "Status"
 
 sensor:
-  - platform: template
-    name: "Preset 1 Position"
-    id: preset_1_sensor
-  - platform: template
-    name: "Preset 2 Position"
-    id: preset_2_sensor
-  - platform: template
-    name: "Preset 3 Position"
-    id: preset_3_sensor
-  - platform: template
-    name: "Preset 4 Position"
-    id: preset_4_sensor
-  - platform: template
-    name: "User Limit (minimum)"
-    id: user_limit_min
-  - platform: template
-    name: "User Limit (maximum)"
-    id: user_limit_max
-  - platform: template
-    name: "System Limit (minimum)"
-    id: sys_limit_min
-  - platform: template
-    name: "System Limit (maximum)"
-    id: sys_limit_max
+  - platform: jarvis_desk
+    preset_1:
+      name: "Preset 1 Position"
+    preset_2:
+      name: "Preset 2 Position"
+    preset_3:
+      name: "Preset 3 Position"
+    preset_4:
+      name: "Preset 4 Position"
+    user_limit_min:
+      name: "User Limit (minimum)"
+    user_limit_max:
+      name: "User Limit (maximum)"
+    sys_limit_min:
+      name: "System Limit (minimum)"
+    sys_limit_max:
+      name: "System Limit (maximum)"
 
 text_sensor:
-  - platform: template
-    name: "User Limit"
-    id: user_limit_set
-  
+  - platform: jarvis_desk
+    user_limit_set:
+      name: "User Limit"
+
 select:
-  - platform: template
-    name: "Units"
-    id: units_select
-    options:
-      - inch
-      - cm
-    optimistic: false
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setUnits(x.c_str());
-  - platform: template
-    name: "Touch Mode"
-    id: touch_mode_select
-    options:
-      - Continuous
-      - Single
-    optimistic: false
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setTouchMode(x.c_str());
-  - platform: template
-    name: "Kill Mode"
-    id: kill_mode_select
-    options:
-      - Kill
-      - LetLive
-    optimistic: false
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setKillMode(x.c_str());
-  - platform: template
-    name: "Sensitivity"
-    id: sensitivity_select
-    options:
-      - High
-      - Medium
-      - Low
-    optimistic: false
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setSensitivity(x.c_str());
+  - platform: jarvis_desk
+    units:
+      name: "Units"
+    touch_mode:
+      name: "Touch Mode"
+    kill_mode:
+      name: "Kill Mode"
+    sensitivity:
+      name: "Sensitivity"
 
 number:
-  - platform: template
-    name: "Height"
-    id: height_number
-    optimistic: false
-    min_value: 1
-    max_value: 1800
-    step: 10
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).move(x*10);
-  - platform: template
-    name: "Offset"
-    id: offset_number
-    optimistic: true
-    min_value: 1
-    max_value: 1800
-    step: 1
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setOffset(x);
-  - platform: template
-    name: "Display Number"
-    id: display_number
-    optimistic: true
-    min_value: 1
-    max_value: 1800
-    step: 1
-    set_action:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setDisplayNumber(x);
+  - platform: jarvis_desk
+    height:
+      name: "Height"
+    offset:
+      name: "Offset"
 
 button:
-  - platform: template
-    name: "Go to Preset 1"
-    id: go_preset_1
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset1();
-  - platform: template
-    name: "Go to Preset 2"
-    id: go_preset_2
-    on_press:
-      - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset2();
-  - platform: template
-    name: "Go to Preset 3"
-    id: go_preset_3
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset3();
-  - platform: template
-    name: "Go to Preset 4"
-    id: go_preset_4
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).goPreset4();
-  - platform: template
-    name: "Set Preset 1"
-    id: set_preset_1
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset1();
-  - platform: template
-    name: "Set Preset 2"
-    id: set_preset_2
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset2();
-  - platform: template
-    name: "Set Preset 3"
-    id: set_preset_3
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset3();
-  - platform: template
-    name: "Set Preset 4"
-    id: set_preset_4
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setPreset4();
-  - platform: template
-    name: "Set Maximum Height"
-    id: set_max_height
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setMaxHeight();
-  - platform: template
-    name: "Set Minimum Height"
-    id: set_min_height
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).setMinHeight();
-  - platform: template
-    name: "Clear Maximum Height"
-    id: clear_max_height
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).clearMaxHeight();
-  - platform: template
-    name: "Clear Minimum Height"
-    id: clear_min_height
-    on_press:
-      then:
-        - lambda: (*reinterpret_cast<JarvisDesk*>(id(fully_jarvis_desk))).clearMinHeight();
+  - platform: jarvis_desk
+    go_preset_1:
+      name: "Go to Preset 1"
+    go_preset_2:
+      name: "Go to Preset 2"
+    go_preset_3:
+      name: "Go to Preset 3"
+    go_preset_4:
+      name: "Go to Preset 4"
+    set_preset_1:
+      name: "Set Preset 1"
+    set_preset_2:
+      name: "Set Preset 2"
+    set_preset_3:
+      name: "Set Preset 3"
+    set_preset_4:
+      name: "Set Preset 4"
+    set_max_height:
+      name: "Set Maximum Height"
+    set_min_height:
+      name: "Set Minimum Height"
+    clear_max_height:
+      name: "Clear Maximum Height"
+    clear_min_height:
+      name: "Clear Minimum Height"

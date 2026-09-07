@@ -16,19 +16,70 @@ There were 3 things I wanted to have: (1) The ability to turn the screen on anyt
 
 * All controls that the handset provides
 * Capture all and inject fake UART messages
-* Always-on LCD display
-* Custom number display (0-180)
 * ESPHome configuration
 
-Exploit that has been implemented so far:
+### Display exploits
+
+The reverse engineering behind the handset display exploits is written up under
+[Technical notes](#technical-notes) below, but **none of them are implemented in
+this component**.
+
+Earlier revisions carried a `HandsetMode` enum and an always-on display timer
+for them. That code was never reachable: the mode was fixed at `Factory` and
+nothing ever changed it, so the always-on display, the custom number display,
+and the "leds off" exploit had no effect. The exploit path also blocked the main
+loop for 22 seconds, which would have stalled the handset bridge and the API
+along with it. It has been removed rather than left as dead weight.
+
+Re-implementing any of them means driving the handset link on a timer instead of
+purely forwarding it -- worth doing as a real, configurable feature:
 
 * Always-on LCD display
-
-Exploits that has not yet been implemented:
-
+* Custom number display (0-180)
 * Always-on leds with no display
 * Always off leds and display but active handset. "Dark mode"
 
+
+## Repository layout
+
+The desk logic lives in `components/jarvis_desk/`, a standard [ESPHome external
+component](https://esphome.io/components/external_components.html). `jarvis.yaml`
+pulls it in with:
+
+```yaml
+external_components:
+  - source:
+      type: local
+      path: components
+```
+
+The component is split the way ESPHome expects: Python files declare the
+configuration schema and generate the C++ wiring, and the `.cpp`/`.h` files hold
+the runtime behaviour.
+
+| File | Purpose |
+| --- | --- |
+| `__init__.py` | The `jarvis_desk:` hub — validates config and binds the two UART buses |
+| `sensor.py`, `text_sensor.py`, `number.py`, `select.py`, `button.py` | One platform per entity domain |
+| `jarvis_desk.*` | Protocol orchestration and Home Assistant state publishing |
+| `serial_device.*`, `serial_message.*` | Message framing, checksums, and the receive state machine |
+| `handset_handler.*` | The handset end of the link; records the last reported height |
+| `desk_settings.*` | The desk's setting vocabulary, and the string ⇄ protocol byte tables |
+
+The component never blocks the main loop. Re-reading the desk's settings needs
+roughly 70 ms between each of its three requests, so that sequence is a small
+state machine driven from `loop()` rather than a busy-wait; the handset bridge
+keeps running throughout.
+
+Both serial links use ESPHome's own `uart` component rather than
+`SoftwareSerial`, so there is no external library dependency. The handset sits on
+hardware UART0 (GPIO1/GPIO3), which is why `logger:` is configured with
+`baud_rate: 0` — the logger must not take that port. The control box uses a
+software UART on GPIO4/GPIO5.
+
+Earlier versions of this project used ESPHome's `custom_component:` with a list
+of `includes:`. That mechanism has since been removed from ESPHome, so the
+configuration above replaces it.
 
 ## Technical notes
 
@@ -59,7 +110,7 @@ Important findings:
 
 ### Requirements
 
-* [Home Assistant](https://www.home-assistant.io/) or [ESPHome](https://esphome.io/)
+* [Home Assistant](https://www.home-assistant.io/) or [ESPHome](https://esphome.io/) 2025.7.0 or newer
 * Wemos D1 Mini (or another ESP8266 board)
 * A bit of soldering
 
@@ -84,6 +135,8 @@ I ended up with the following pin arrangement:
 You can see photos of the wiring setup and the setup in its enclosure in the `images` directory.
 
 To configure my device, I made some minor changes to the existing `jarvis.yaml` ESPHome configuration file which you can see in this repository's commit history. Mostly this involved renaming or relabeling to my preferences. I also created a `secrets.yaml` file to contain my WiFi details, Home Assistant API encryption key, and over-the-air update password.
+
+Every entity is optional. Drop a key from a platform block and that entity simply is not created, so you can trim the entity list back to whatever you actually use in Home Assistant.
 
 To compile and run on my D1 Mini, I used [Homebrew](https://brew.sh/) to install the [ESPHome CLI](https://formulae.brew.sh/formula/esphome#default):
 
