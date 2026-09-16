@@ -33,6 +33,9 @@ static const float MM_TO_TENTH_INCH = 0.393f;
 
 /// The control box needs roughly this long to answer each settings request.
 static const uint32_t SETTINGS_STEP_DELAY_MS = 70;
+/// Minimum gap between wake requests forwarded to the control box. See
+/// JarvisDesk::handle_handset() for why repeats must not all be passed on.
+static const uint32_t WAKE_FORWARD_INTERVAL_MS = 100;
 /// How often to retry until the whole settings block has been read back.
 static const uint32_t SETTINGS_RETRY_INTERVAL_MS = 10000;
 
@@ -166,6 +169,9 @@ class JarvisDesk : public Component {
 
   SettingsStep settings_step_{SettingsStep::IDLE};
   bool settings_restart_pending_{false};
+
+  uint32_t last_wake_forward_{0};
+  uint16_t dropped_wakes_{0};
 };
 
 }  // namespace jarvis_desk

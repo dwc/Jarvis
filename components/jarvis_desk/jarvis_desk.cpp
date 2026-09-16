@@ -1,5 +1,6 @@
 #include "jarvis_desk.h"
 
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -87,6 +88,27 @@ void JarvisDesk::handle_handset() {
   }
 
   log_packet("Handset", in_msg);
+
+  // The handset repeats Wake until the control box answers it. Every repeat we
+  // forward puts the control box link into transmit, and the ESP8266 software
+  // UART cannot receive while it transmits -- it holds interrupts off for the
+  // whole byte. Forwarding the full stream therefore blinds us to the very
+  // reply that would stop the spam, and the handset stays blank with its
+  // buttons lit until the desk is power cycled.
+  //
+  // Pass one wake through per interval and leave the link listening in between.
+  if (in_msg.get_type() == CommandFromHandsetType::Wake) {
+    const uint32_t now = millis();
+    if (now - this->last_wake_forward_ < WAKE_FORWARD_INTERVAL_MS) {
+      this->dropped_wakes_++;
+      return;
+    }
+    if (this->dropped_wakes_ > 0) {
+      ESP_LOGW(TAG, "Handset repeating wake requests (%u suppressed since last forward)", this->dropped_wakes_);
+      this->dropped_wakes_ = 0;
+    }
+    this->last_wake_forward_ = now;
+  }
 
   // On powerup make the handset stop sending wake commands.
   switch (in_msg.get_type()) {
