@@ -52,11 +52,28 @@ jarvis_desk:
   handset_uart_id: handset_uart
   controlbox_uart_id: controlbox_uart
 
+# Diagnostics. These answer the two questions the handset lockup left open:
+# whether the heap degrades over days, and whether anything blocks the main
+# loop long enough to trip the hardware watchdog.
+debug:
+  update_interval: 60s
+
 binary_sensor:
   - platform: status
     name: "Status"
 
 sensor:
+  - platform: uptime
+    name: "Uptime"
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    fragmentation:
+      name: "Heap Fragmentation"
+    loop_time:
+      name: "Loop Time (max)"
   - platform: jarvis_desk
     preset_1:
       name: "Preset 1 Position"
@@ -76,6 +93,9 @@ sensor:
       name: "System Limit (maximum)"
 
 text_sensor:
+  - platform: debug
+    reset_reason:
+      name: "Reset Reason"
   - platform: jarvis_desk
     user_limit_set:
       name: "User Limit"
